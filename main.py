@@ -4,6 +4,7 @@ import dateparser
 import re
 from sqlalchemy import create_engine, Column, Integer, String,\
     DateTime, PrimaryKeyConstraint
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -33,6 +34,10 @@ class CovidCase(Base):
 
     def __repr__(self):
         return f'{self.state}:{self.sick},{self.healed},{self.die}'
+    
+    @classmethod
+    def find_by_name(cls, session, state):
+        return session.query(cls).filter(state=state).all()
 
 
 engine = create_engine('sqlite:///test.db', echo=True)
@@ -51,6 +56,16 @@ banner_div = soup.findAll("div", {"class": "cv-banner__description"})
 human_date = re.match(r"^По состоянию на ([\d]{2}\s[\w]{3,6}\s[\d]{2}:[\d]{2})$", banner_div[0].text).group(1)
 updated_time = dateparser.parse(human_date)
 
+
+def save_to_base(session, state_list):
+    try:
+        session.bulk_save_objects(state_list)
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+
+
+state_list = []
 map_div = soup.find_all("div", {"class": "d-map__list"})
 # print(f"{type(soup)} and {type(map_div)}")
 tr_list = map_div[0].find_all("tr")
@@ -60,5 +75,8 @@ for tr in tr_list:
     for column in columns:
         result = re.search(r"^d-map__indicator_([\w]+)$", column.span['class'][1])
         covid_case[result.group(1)] = column.text
-    session.add(covid_case)
-session.commit()
+        state_list.append(covid_case)
+
+save_to_base(session, state_list)
+
+print(CovidCase.find_by_name(session, 'Красн'))
