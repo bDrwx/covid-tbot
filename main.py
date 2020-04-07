@@ -33,11 +33,11 @@ class CovidCase(Base):
         setattr(self, key, value)    
 
     def __repr__(self):
-        return f'{self.state}:{self.sick},{self.healed},{self.die}'
+        return f'{self.state}:{self.sick}|{self.healed}|{self.die} - {self.date}'
     
     @classmethod
     def find_by_name(cls, session, state):
-        return session.query(cls).filter(state=state).all()
+        return session.query(cls).filter(cls.state.like("%{}%".format(state))).all()
 
 
 engine = create_engine('sqlite:///test.db', echo=True)
@@ -61,7 +61,8 @@ def save_to_base(session, state_list):
     try:
         session.bulk_save_objects(state_list)
         session.commit()
-    except IntegrityError:
+    except IntegrityError as e:
+        print(f'Error record to DB {e}')
         session.rollback()
 
 
@@ -75,8 +76,8 @@ for tr in tr_list:
     for column in columns:
         result = re.search(r"^d-map__indicator_([\w]+)$", column.span['class'][1])
         covid_case[result.group(1)] = column.text
-        state_list.append(covid_case)
+    state_list.append(covid_case)
 
 save_to_base(session, state_list)
 
-print(CovidCase.find_by_name(session, 'Красн'))
+print(CovidCase.find_by_name(session, 'Краснодар'))
