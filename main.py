@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import dateparser
 import re
 from sqlalchemy import create_engine, Column, Integer, String,\
-    DateTime, PrimaryKeyConstraint
+    DateTime, PrimaryKeyConstraint, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -37,7 +37,7 @@ class CovidCase(Base):
     
     @classmethod
     def find_by_name(cls, session, state):
-        return session.query(cls).filter(cls.state.like("%{}%".format(state))).all()
+        return session.query(cls).filter(cls.state.like("%{}%".format(state))).order_by(cls.date.desc()).limit(2).all()
 
 
 engine = create_engine('sqlite:///test.db', echo=True)
